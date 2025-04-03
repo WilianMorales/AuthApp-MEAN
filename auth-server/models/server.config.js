@@ -11,7 +11,8 @@ class Server {
         this.app = express()
         this.PORT = process.env.PORT
         this.path = {
-            auth: '/api/auth'
+            auth: '/api/auth',
+            employees: '/api/employees'
         }
         this.connectDB()
         this.middlewares()
@@ -25,7 +26,8 @@ class Server {
 
     // Rutas
     routes = () => {
-        this.app.use(this.path.auth, require('../routes/auth.routes'))
+        this.app.use(this.path.auth, require('../routes/auth.routes'));
+        this.app.use(this.path.employees, require('../routes/employee.routes'));
         this.app.use(express.json())
     }
 
