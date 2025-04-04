@@ -2,6 +2,7 @@ const { response } = require('express');
 const bcrypt = require('bcryptjs');
 const { User }  = require('../models');
 const { generateJWT } = require('../helpers')
+const { UserDTO } = require('../dtos');
 
 const addUser = async(req, res = response) => {
 
@@ -25,13 +26,12 @@ const addUser = async(req, res = response) => {
         const token = await generateJWT( dbUser.id, name);
         // Crear usuario de DB
         await dbUser.save();
+        const userDTO = new UserDTO(dbUser);
         // Generar respuest exitosa
         return res.status(201).json({
             ok: true,
             msg: 'Usuario registrado correctamente',
-            uid: dbUser.id,
-            name,
-            email,
+            user: userDTO,
             token
         })
     } catch (error) {
@@ -44,7 +44,6 @@ const addUser = async(req, res = response) => {
 }
 
 const loginUser = async(req, res = response) => {
-
     const { email, password } = req.body;
 
     try{
@@ -66,12 +65,12 @@ const loginUser = async(req, res = response) => {
         }
         // Generar el JWToken
         const token = await generateJWT( dbUser.id, dbUser.name);
+        const userDTO = new UserDTO(dbUser);
+
         // Generar respuest exitosa
         return res.json({
             ok: true,
-            uid: dbUser.id,
-            name: dbUser.name,
-            email: dbUser.email,
+            user: userDTO,
             token
         })
     } catch (error) {
@@ -84,20 +83,39 @@ const loginUser = async(req, res = response) => {
 }
 
 const revalidateJWToken = async(req, res = response) => {
-    const { uid } = req;
+    const { uid } = req.user;
+    
+    try {
+        const dbUser = await User.findById(uid);
 
-    const dbUser = await User.findById(uid);
+        if (!dbUser) {
+            return res.status(404).json({
+                ok: false,
+                msg: 'Usuario no encontrado'
+            });
+        }
 
-    const newToken = await generateJWT(uid, dbUser.name)
-    return res.json({
-        ok: true,
-        msg: 'Token renovado correctamente',
-        uid,
-        name: dbUser.name,
-        email: dbUser.email,
-        newToken
-    });
-}
+        // Generar el nuevo token
+        const newToken = await generateJWT(uid, dbUser.name);
+
+        // Crear un objeto UserDTO con la información del usuario
+        const userDTO = new UserDTO(dbUser);
+
+        return res.json({
+            ok: true,
+            msg: 'Token renovado correctamente',
+            user: userDTO,
+            newToken
+        });
+    }catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            ok: false,
+            msg: 'Error inesperado al renovar el token'
+        });
+    }
+   
+};
 
 module.exports = { 
     addUser,

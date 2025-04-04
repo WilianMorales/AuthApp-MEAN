@@ -1,4 +1,5 @@
 const { Employee } = require('../models');
+const { EmployeeDTO } = require('../dtos');
 
 const createEmployee = async (req, res) => {
     const { name, lastName, email, age, address, position, salary } = req.body;
@@ -15,10 +16,12 @@ const createEmployee = async (req, res) => {
 
         await newEmployee.save();
 
+        const employeeDTO = EmployeeDTO(newEmployee);
+
         return res.status(201).json({
             ok: true,
             msg: 'Empleado creado correctamente',
-            employee: newEmployee
+            employee: employeeDTO
         });
     } catch (error) {
         console.error(error);
@@ -32,9 +35,11 @@ const createEmployee = async (req, res) => {
 const getEmployees = async (req, res) => {
     try {
         const employees = await Employee.find();
+        const employeeDTOs = employees.map(employee => new EmployeeDTO(employee));
+
         return res.json({
             ok: true,
-            employees
+            employees: employeeDTOs
         });
     } catch (error) {
         console.error(error);
@@ -45,33 +50,37 @@ const getEmployees = async (req, res) => {
     }
 };
 
-// Buscar empleado por nombre
-const getEmployeeByName = async (req, res) => {
+// Buscar empleado por nombres
+const getEmployeeByNames = async (req, res) => {
     const { name, lastName } = req.query;
 
     try {
-        // Buscar un empleado que coincida con el nombre
-        //const employee = await Employee.findOne({ name });
-
-        let query = {}
-        if (name) {
-            query.name = name;
-        }
-        if (lastName) {
-            query.lastName = lastName;
-        }
-        const employees = await Employee.find(query);
-
-        if (employees.length === 0) {
-            return res.status(404).json({
+        if (!name && !lastName) {
+            return res.status(400).json({
                 ok: false,
-                msg: 'Empleado(s) no encontrado'
+                msg: 'Se requiere al menos uno de los parámetros: nombre o apellido',
             });
         }
 
+        let query = {};
+        if (name) query.name = { $regex: name, $options: 'i' };
+        if (lastName) query.lastName = { $regex: lastName, $options: 'i' };
+
+        const employees = await Employee.find(query);
+
+        // Si no se encuentran empleados
+        if (employees.length === 0) {
+            return res.status(404).json({
+                ok: false,
+                msg: 'Empleado(s) no encontrado(s)',
+            });
+        }
+
+        const employeeDTOs = employees.map(employee => new EmployeeDTO(employee));
+
         return res.json({
             ok: true,
-            employee
+            employee: employeeDTOs
         });
     } catch (error) {
         console.error(error);
@@ -84,10 +93,10 @@ const getEmployeeByName = async (req, res) => {
 
 const updateEmployee = async (req, res) => {
     const { id } = req.params;
-    const { name, lastName, email, age, address, salary } = req.body;
+    const { name, lastName, email, age, address, position, salary } = req.body;
 
     try {
-        const employee = await Employee.finById(id);
+        const employee = await Employee.findById(id);
         if (!employee) {
             return res.status(404).json({
                 ok: false,
@@ -100,13 +109,16 @@ const updateEmployee = async (req, res) => {
         employee.email = email || employee.email;
         employee.age = age || employee.age;
         employee.address = address || employee.address;
+        employee.position = position || employee.position;
         employee.salary = salary || employee.salary;
 
         await employee.save();
 
+        const employeeDTO = EmployeeDTO(employee);
+
         return res.json({
             ok: true,
-            employee
+            employee: employeeDTO
         });
     } catch (error) {
         console.error(error);
@@ -121,7 +133,7 @@ const deleteEmployee = async (req, res) => {
     const { id } = req.params;
 
     try {
-        const employee = await Employee.finById(id);
+        const employee = await Employee.findById(id);
         if (!employee) {
             return res.status(404).json({
                 ok: false,
@@ -129,11 +141,14 @@ const deleteEmployee = async (req, res) => {
             });
         }
 
+        const employeeDTO = new EmployeeDTO(employee);
+
         await employee.delete();
 
         return res.json({
             ok: true,
             msg: 'Empleado eliminado',
+            employee: employeeDTO
         });
     } catch (error) {
         console.error(error);
@@ -147,7 +162,7 @@ const deleteEmployee = async (req, res) => {
 module.exports = {
     createEmployee,
     getEmployees,
-    getEmployeeByName,
+    getEmployeeByNames,
     updateEmployee,
     deleteEmployee,
 }

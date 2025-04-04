@@ -14,12 +14,18 @@ const validateJWToken = ( req, res = response, next) => {
 
     try {
         const { uid, name } = jwt.verify( token, process.env.SECRET_KEY_JWT)
-        req.uid = uid;
-        req.name = name;
+        req.user = { uid, name };
     } catch (error) {
+        console.error(error);
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                ok: false,
+                msg: 'El token ha expirado'
+            });
+        }
         return res.status(401).json({
             ok: false,
-            msg: 'El token ingresado no es válido'
+            msg: 'El token no es válido o ha sido manipulado'
         });
     }
     next();

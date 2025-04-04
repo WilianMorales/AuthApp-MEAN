@@ -1,12 +1,15 @@
 const { Router } = require('express');
 const { check } = require('express-validator');
-const { createEmployee, getEmployees, updateEmployee, deleteEmployee } = require('../controllers');
+const { createEmployee, getEmployees, getEmployeeByNames, updateEmployee, deleteEmployee } = require('../controllers');
 const { validateFields, validateJWToken } = require('../middlewares');
 
 const router = Router();
 
 // Obtener todos los empleados
 router.get('/list', validateJWToken, getEmployees);
+
+// Obtener empleados por nombre o apellido (con búsqueda flexible)
+router.get('/search', validateJWToken, getEmployeeByNames); 
 
 // Crear un nuevo empleado
 router.post('/create', [
